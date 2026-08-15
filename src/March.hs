@@ -1,55 +1,66 @@
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module March (
     MarchConfig (..),
-    MarchInfo (..),
-    stepInfo,
-    march,
-    marchInSDF,
-    raymarch,
 ) where
 
-import Data.Monoid (Sum (..))
-import Data.Semigroup (Min (..))
 import Ray
-import SDF
 import Vec
-
-data MarchInfo = MarchInfo
-    { traveled :: Sum Scalar
-    , minStep :: Min Scalar
-    , steps :: Sum Int
-    }
-    deriving (Show, Eq)
-
-instance Semigroup MarchInfo where
-    (<>) :: MarchInfo -> MarchInfo -> MarchInfo
-    MarchInfo t1 m1 s1 <> MarchInfo t2 m2 s2 =
-        MarchInfo (t1 <> t2) (m1 <> m2) (s1 <> s2)
-
-instance Monoid MarchInfo where
-    mempty :: MarchInfo
-    mempty = MarchInfo mempty (Min (1 / 0)) mempty
-
-stepInfo :: Scalar -> MarchInfo
-stepInfo d = MarchInfo (Sum d) (Min d) (Sum 1)
+import Shape
+import Scene
 
 data MarchConfig = MarchConfig
     { epsilon :: Scalar
     , maxDist :: Scalar
     , maxSteps :: Int
     }
-    deriving (Show, Eq)
 
-march :: Scalar -> Ray -> (MarchInfo, Ray)
-march d (Ray p dir) = (stepInfo d, Ray (p + d *^ dir) dir)
+data Marched a = Marched
+    { ray :: a
+    , traveled :: !Scalar
+    , minDist :: !Scalar
+    , nearest :: Maybe Shape
+    , steps :: !Int
+    }
 
-marchInSDF :: SDF (Vec3 Scalar) -> Ray -> (MarchInfo, Ray)
-marchInSDF sdf ray@(Ray p _) = march (function sdf p) ray
+instance Semigroup (Marched a) where
+    (<>) :: Marched a -> Marched a -> Marched a
+    (<>) m1@(Marched _ _ d1 _ _) m2@(Marched _ _ d2 _ _) = if d1 <= d2 then m1 else m2
 
-raymarch :: MarchConfig -> SDF (Vec3 Scalar) -> Ray -> (MarchInfo, Ray)
-raymarch (MarchConfig eps maxD maxS) sdf ray =
-    until (stop . fst) (>>= marchInSDF sdf) (pure ray)
-  where
-    stop (MarchInfo t m s) =
-        getSum s >= maxS || getSum t > maxD || getMin m < eps
+instance Monoid (Marched Ray) where
+    mempty :: Marched Ray
+    mempty = Marched (Ray (1/0) 0) (1/0) (1/0) Nothing 0
+
+instance Functor Marched where
+    fmap :: (a -> b) -> Marched a -> Marched b
+    fmap f m = m {ray = f $ ray m}
+
+instance Applicative Marched where
+    pure :: a -> Marched a
+    pure a = Marched a 0 (1/0) Nothing 0
+    (<*>) :: Marched (a -> b) -> Marched a -> Marched b
+    (<*>) f a = do
+        f' <- f
+        a' <- a
+        pure (f' a')
+
+instance Monad Marched where
+    (>>=) :: Marched a -> (a -> Marched b) -> Marched b
+    (>>=) (Marched x1 t1 d1 o1 s1) b = Marched x2 (t1 + t2) (min d1 d2) (if d1 <= d2 then o1 else o2) (s1 + s2)
+        where (Marched x2 t2 d2 o2 s2) = b x1
+
+stepToShape :: Shape -> Ray -> Marched Ray
+stepToShape o@(Shape f _) r@(Ray x _) = Marched (advance d r) d d (Just o) 1
+    where d = f x
+
+stepInScene :: Scene -> Ray -> Marched Ray
+stepInScene (Scene shapes _) r = mconcat $ map (\s -> stepToShape s r) shapes
+
+marchInScene :: MarchConfig -> Scene -> Ray -> Marched Ray
+marchInScene config scene ray = until stop (>>= (stepInScene scene)) (pure ray) 
+    where stop (Marched _ t d _ s)
+             | t >= maxDist config = True
+             | d <= epsilon config = True
+             | s >= maxSteps config = True
+             | otherwise = False

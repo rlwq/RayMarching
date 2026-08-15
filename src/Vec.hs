@@ -1,10 +1,10 @@
-{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE InstanceSigs #-}
 
 module Vec (
     Scalar,
     Vec2 (..),
     Vec3 (..),
+    Vector (..),
     (*^),
     dot,
     cross,
@@ -18,104 +18,123 @@ module Vec (
 
 type Scalar = Float
 
-data Vec2 a = Vec2 a a
-    deriving (Show, Eq, Functor, Foldable, Traversable)
+data Vec2 = Vec2 !Scalar !Scalar
+    deriving (Show, Eq)
 
-data Vec3 a = Vec3 a a a
-    deriving (Show, Eq, Functor, Foldable, Traversable)
+data Vec3 = Vec3 !Scalar !Scalar !Scalar
+    deriving (Show, Eq)
 
-instance Applicative Vec2 where
-    pure :: a -> Vec2 a
-    pure a = Vec2 a a
+class Vector v where
+    vmap :: (Scalar -> Scalar) -> v -> v
+    vzip :: (Scalar -> Scalar -> Scalar) -> v -> v -> v
+    vfold :: (Scalar -> Scalar -> Scalar) -> v -> Scalar
 
-    (<*>) :: Vec2 (a -> b) -> Vec2 a -> Vec2 b
-    Vec2 f g <*> Vec2 a b = Vec2 (f a) (g b)
+instance Vector Vec2 where
+    vmap :: (Scalar -> Scalar) -> Vec2 -> Vec2
+    vmap f (Vec2 x y) = Vec2 (f x) (f y)
 
-instance Applicative Vec3 where
-    pure :: a -> Vec3 a
-    pure a = Vec3 a a a
+    vzip :: (Scalar -> Scalar -> Scalar) -> Vec2 -> Vec2 -> Vec2
+    vzip f (Vec2 x1 y1) (Vec2 x2 y2) = Vec2 (f x1 x2) (f y1 y2)
 
-    (<*>) :: Vec3 (a -> b) -> Vec3 a -> Vec3 b
-    Vec3 f g h <*> Vec3 a b c = Vec3 (f a) (g b) (h c)
+    vfold :: (Scalar -> Scalar -> Scalar) -> Vec2 -> Scalar
+    vfold f (Vec2 x y) = f x y
 
-instance (Num a) => Num (Vec2 a) where
-    (+) :: Vec2 a -> Vec2 a -> Vec2 a
-    (+) = liftA2 (+)
+instance Vector Vec3 where
+    vmap :: (Scalar -> Scalar) -> Vec3 -> Vec3
+    vmap f (Vec3 x y z) = Vec3 (f x) (f y) (f z)
 
-    (*) :: Vec2 a -> Vec2 a -> Vec2 a
-    (*) = liftA2 (*)
+    vzip :: (Scalar -> Scalar -> Scalar) -> Vec3 -> Vec3 -> Vec3
+    vzip f (Vec3 x1 y1 z1) (Vec3 x2 y2 z2) = Vec3 (f x1 x2) (f y1 y2) (f z1 z2)
 
-    abs :: Vec2 a -> Vec2 a
-    abs = fmap abs
+    vfold :: (Scalar -> Scalar -> Scalar) -> Vec3 -> Scalar
+    vfold f (Vec3 x y z) = f x (f y z)
 
-    signum :: Vec2 a -> Vec2 a
-    signum = fmap signum
+instance Num Vec2 where
+    (+) :: Vec2 -> Vec2 -> Vec2
+    (+) = vzip (+)
 
-    fromInteger :: Integer -> Vec2 a
-    fromInteger = pure . fromInteger
+    (*) :: Vec2 -> Vec2 -> Vec2
+    (*) = vzip (*)
 
-    negate :: Vec2 a -> Vec2 a
-    negate = fmap negate
+    abs :: Vec2 -> Vec2
+    abs = vmap abs
 
-instance (Num a) => Num (Vec3 a) where
-    (+) :: Vec3 a -> Vec3 a -> Vec3 a
-    (+) = liftA2 (+)
+    signum :: Vec2 -> Vec2
+    signum = vmap signum
 
-    (*) :: Vec3 a -> Vec3 a -> Vec3 a
-    (*) = liftA2 (*)
+    fromInteger :: Integer -> Vec2
+    fromInteger n = Vec2 s s
+      where
+        s = fromInteger n
 
-    abs :: Vec3 a -> Vec3 a
-    abs = fmap abs
+    negate :: Vec2 -> Vec2
+    negate = vmap negate
 
-    signum :: Vec3 a -> Vec3 a
-    signum = fmap signum
+instance Num Vec3 where
+    (+) :: Vec3 -> Vec3 -> Vec3
+    (+) = vzip (+)
 
-    fromInteger :: Integer -> Vec3 a
-    fromInteger = pure . fromInteger
+    (*) :: Vec3 -> Vec3 -> Vec3
+    (*) = vzip (*)
 
-    negate :: Vec3 a -> Vec3 a
-    negate = fmap negate
+    abs :: Vec3 -> Vec3
+    abs = vmap abs
 
-instance (Fractional a) => Fractional (Vec2 a) where
-    (/) :: Vec2 a -> Vec2 a -> Vec2 a
-    (/) = liftA2 (/)
+    signum :: Vec3 -> Vec3
+    signum = vmap signum
 
-    fromRational :: Rational -> Vec2 a
-    fromRational = pure . fromRational
+    fromInteger :: Integer -> Vec3
+    fromInteger n = Vec3 s s s
+      where
+        s = fromInteger n
 
-instance (Fractional a) => Fractional (Vec3 a) where
-    (/) :: Vec3 a -> Vec3 a -> Vec3 a
-    (/) = liftA2 (/)
+    negate :: Vec3 -> Vec3
+    negate = vmap negate
 
-    fromRational :: Rational -> Vec3 a
-    fromRational = pure . fromRational
+instance Fractional Vec2 where
+    (/) :: Vec2 -> Vec2 -> Vec2
+    (/) = vzip (/)
+
+    fromRational :: Rational -> Vec2
+    fromRational r = Vec2 s s
+      where
+        s = fromRational r
+
+instance Fractional Vec3 where
+    (/) :: Vec3 -> Vec3 -> Vec3
+    (/) = vzip (/)
+
+    fromRational :: Rational -> Vec3
+    fromRational r = Vec3 s s s
+      where
+        s = fromRational r
 
 infixl 7 *^
 
-(*^) :: (Functor f, Num a) => a -> f a -> f a
-(*^) s = fmap (s *)
+(*^) :: (Vector v) => Scalar -> v -> v
+(*^) s = vmap (s *)
 
-dot :: (Applicative f, Foldable f, Num a) => f a -> f a -> a
-dot u v = sum (liftA2 (*) u v)
+dot :: (Vector v) => v -> v -> Scalar
+dot u v = vfold (+) (vzip (*) u v)
 
-magSq :: (Applicative f, Foldable f, Num a) => f a -> a
+magSq :: (Vector v) => v -> Scalar
 magSq v = dot v v
 
-mag :: (Applicative f, Foldable f, Floating a) => f a -> a
+mag :: (Vector v) => v -> Scalar
 mag = sqrt . magSq
 
-normalize :: (Applicative f, Foldable f, Floating a) => f a -> f a
-normalize v = fmap (/ mag v) v
+normalize :: (Vector v) => v -> v
+normalize v = vmap (/ mag v) v
 
-distance :: (Applicative f, Foldable f, Floating a) => f a -> f a -> a
-distance u v = mag (liftA2 (-) u v)
+distance :: (Vector v) => v -> v -> Scalar
+distance u v = mag (vzip (-) u v)
 
-vmin :: (Applicative f, Ord a) => f a -> f a -> f a
-vmin = liftA2 min
+vmin :: (Vector v) => v -> v -> v
+vmin = vzip min
 
-vmax :: (Applicative f, Ord a) => f a -> f a -> f a
-vmax = liftA2 max
+vmax :: (Vector v) => v -> v -> v
+vmax = vzip max
 
-cross :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
+cross :: Vec3 -> Vec3 -> Vec3
 cross (Vec3 x1 y1 z1) (Vec3 x2 y2 z2) =
     Vec3 (y1 * z2 - z1 * y2) (z1 * x2 - x1 * z2) (x1 * y2 - y1 * x2)
