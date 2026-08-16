@@ -3,10 +3,9 @@ module Scene (
 ) where
 
 import Shape
-import Vec
+import Skybox
 
 data Scene = Scene
     { shapes :: [Shape]
-    , background :: Direction -> Color
+    , skybox :: Skybox
     }
-

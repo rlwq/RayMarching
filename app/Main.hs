@@ -5,7 +5,10 @@ import Image
 import March
 import Render
 import Scene
+import Sdf
 import Shape
+import Skybox
+import Textures
 import Vec
 
 main :: IO ()
@@ -16,7 +19,7 @@ main = do
     path = "out.ppm"
 
 resolution :: Resolution
-resolution = (1920, 1440)
+resolution = (960, 720)
 
 config :: MarchConfig
 config =
@@ -38,44 +41,18 @@ camera =
 scene :: Scene
 scene =
     Scene
-        { shapes = [ground, ball, cube]
-        , background = sky
+        { shapes =
+            [ ground (-1) # checker white black
+            , sphere (Vec3 (-0.35) 0 5.8) 1 # solid red
+            , box (Vec3 0.75 (-0.4) 5.6) (Vec3 1.2 1.2 1.2) # solid blue
+            ]
+        , skybox = sky lightBlue skyBlue
         }
 
-ground :: Shape
-ground =
-    Shape
-        { sdf = \(Vec3 _ y _) -> y + 1
-        , material = checker
-        }
-
-ball :: Shape
-ball =
-    Shape
-        { sdf = \point -> distance point (Vec3 (-1.1) 0 6) - 1
-        , material = const (Vec3 0.85 0.25 0.2)
-        }
-
-cube :: Shape
-cube =
-    Shape
-        { sdf = box (Vec3 1.3 (-0.4) 5.5) (Vec3 0.6 0.6 0.6)
-        , material = const (Vec3 0.2 0.45 0.85)
-        }
-
-box :: Point -> Vec3 -> Point -> Scalar
-box center halfExtents point = norm (vmax q 0) + min (vfold max q) 0
-  where
-    q = abs (point - center) - halfExtents
-
-checker :: Point -> Color
-checker (Vec3 x _ z) =
-    if even (floor x + floor z :: Int)
-        then Vec3 0.9 0.9 0.85
-        else Vec3 0.2 0.2 0.22
-
-sky :: Direction -> Color
-sky (Vec3 _ y _) = horizon + max 0 y *^ (zenith - horizon)
-  where
-    horizon = Vec3 0.75 0.8 0.9
-    zenith = Vec3 0.25 0.45 0.8
+black, white, red, blue, lightBlue, skyBlue :: Color
+black = Vec3 0.2 0.2 0.22
+white = Vec3 0.9 0.9 0.85
+red = Vec3 0.85 0.25 0.2
+blue = Vec3 0.2 0.45 0.85
+lightBlue = Vec3 0.75 0.8 0.9
+skyBlue = Vec3 0.25 0.45 0.8

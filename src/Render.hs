@@ -7,7 +7,7 @@ module Render (
 import Camera (Camera, Resolution, sensorRays)
 import March (MarchConfig, MarchResult (..), march)
 import Ray (origin)
-import Scene (Scene, background)
+import Scene (Scene, skybox)
 import Shape (material)
 import Vec (Color, Image)
 
@@ -17,7 +17,7 @@ capture config resolution scene camera =
 
 raster :: Scene -> MarchResult -> Color
 raster _ (Hit ray shape) = material shape (origin ray)
-raster scene (Miss escaped) = background scene escaped
+raster scene (Miss escaped) = skybox scene escaped
 
 rasters :: Scene -> [[MarchResult]] -> Image
 rasters scene = (fmap . fmap) (raster scene)

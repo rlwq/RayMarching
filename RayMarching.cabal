@@ -16,6 +16,9 @@ library
     exposed-modules:  Vec
                       Ray
                       Camera
+                      Sdf
+                      Textures
+                      Skybox
                       Shape
                       Scene
                       March

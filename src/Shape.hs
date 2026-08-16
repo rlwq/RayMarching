@@ -1,10 +1,17 @@
 module Shape (
     Shape (..),
+    (#),
 ) where
 
-import Vec
+import Sdf
+import Textures
 
 data Shape = Shape
-    { sdf :: Point -> Scalar
-    , material :: Point -> Color
+    { sdf :: Sdf
+    , material :: Material
     }
+
+infixl 1 #
+
+(#) :: Sdf -> Material -> Shape
+(#) = Shape
