@@ -6,10 +6,10 @@ module Ray (
 import Vec
 
 data Ray = Ray
-    { position :: Vec3
-    , direction :: Vec3
+    { origin :: Point
+    , direction :: Direction
     }
     deriving (Show, Eq)
 
-advance :: Float -> Ray -> Ray
-advance t (Ray p d) = Ray (p + t *^ d) d
+advance :: Scalar -> Ray -> Ray
+advance t ray = ray {origin = origin ray + t *^ direction ray}

@@ -5,6 +5,6 @@ module Shape (
 import Vec
 
 data Shape = Shape
-    { sdf :: Vec3 -> Scalar
-    , material :: Vec3 -> Vec3
+    { sdf :: Point -> Scalar
+    , material :: Point -> Color
     }

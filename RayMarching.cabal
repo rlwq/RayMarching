@@ -19,6 +19,8 @@ library
                       Shape
                       Scene
                       March
+                      Image
+                      Render
     build-depends:    base >=4.18 && <5
     hs-source-dirs:   src
     default-language: Haskell2010

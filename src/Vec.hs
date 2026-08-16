@@ -2,14 +2,18 @@
 
 module Vec (
     Scalar,
+    Point,
+    Direction,
+    Color,
+    Image,
     Vec2 (..),
     Vec3 (..),
     Vector (..),
     (*^),
     dot,
     cross,
-    mag,
-    magSq,
+    norm,
+    normSq,
     normalize,
     distance,
     vmin,
@@ -17,6 +21,14 @@ module Vec (
 ) where
 
 type Scalar = Float
+
+type Point = Vec3
+
+type Direction = Vec3
+
+type Color = Vec3
+
+type Image = [[Color]]
 
 data Vec2 = Vec2 !Scalar !Scalar
     deriving (Show, Eq)
@@ -117,17 +129,17 @@ infixl 7 *^
 dot :: (Vector v) => v -> v -> Scalar
 dot u v = vfold (+) (vzip (*) u v)
 
-magSq :: (Vector v) => v -> Scalar
-magSq v = dot v v
+normSq :: (Vector v) => v -> Scalar
+normSq v = dot v v
 
-mag :: (Vector v) => v -> Scalar
-mag = sqrt . magSq
+norm :: (Vector v) => v -> Scalar
+norm = sqrt . normSq
 
 normalize :: (Vector v) => v -> v
-normalize v = vmap (/ mag v) v
+normalize v = vmap (/ norm v) v
 
 distance :: (Vector v) => v -> v -> Scalar
-distance u v = mag (vzip (-) u v)
+distance u v = norm (vzip (-) u v)
 
 vmin :: (Vector v) => v -> v -> v
 vmin = vzip min
